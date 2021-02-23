@@ -1,0 +1,30 @@
+##TITLE=Ethane, hexafluoro-
+##JCAMP-DX=4.24
+##DATA TYPE=MASS SPECTRUM
+##OWNER=NIST Mass Spectrometry Data Center
+Collection (C) 2014 copyright by the U.S. Secretary of Commerce
+on behalf of the United States of America. All rights reserved.
+##CAS REGISTRY NO=76-16-4
+##$NIST MASS SPEC NO=3610
+##MOLFORM=C2 F6
+##MW=138
+##$NIST SOURCE=MSDC
+##XUNITS=M/Z
+##YUNITS=RELATIVE INTENSITY
+##XFACTOR=1
+##YFACTOR=1
+##FIRSTX=12
+##LASTX=138
+##FIRSTY=150
+##MAXX=138
+##MINX=12
+##MAXY=9999
+##MINY=10
+##NPOINTS=18
+##PEAK TABLE=(XY..XY)
+12,150 13,10 19,120 24,30
+31,1832 32,20 43,40 50,1011
+51,10 62,10 69,9999 70,110
+81,10 100,60 101,10 119,4134
+120,90 138,20
+##END=

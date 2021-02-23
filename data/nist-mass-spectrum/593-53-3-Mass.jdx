@@ -1,0 +1,28 @@
+##TITLE=Methyl fluoride
+##JCAMP-DX=4.24
+##DATA TYPE=MASS SPECTRUM
+##OWNER=NIST Mass Spectrometry Data Center
+Collection (C) 2014 copyright by the U.S. Secretary of Commerce
+on behalf of the United States of America. All rights reserved.
+##CAS REGISTRY NO=593-53-3
+##$NIST MASS SPEC NO=41
+##MOLFORM=C H3 F
+##MW=34
+##$NIST SOURCE=MSDC
+##XUNITS=M/Z
+##YUNITS=RELATIVE INTENSITY
+##XFACTOR=1
+##YFACTOR=1
+##FIRSTX=12
+##LASTX=35
+##FIRSTY=50
+##MAXX=35
+##MINX=12
+##MAXY=9999
+##MINY=50
+##NPOINTS=9
+##PEAK TABLE=(XY..XY)
+12,50 13,120 14,310 15,1161
+31,771 32,440 33,8888 34,9999
+35,120
+##END=

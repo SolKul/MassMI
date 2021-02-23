@@ -1,0 +1,31 @@
+##TITLE=Ethane, pentafluoro-
+##JCAMP-DX=4.24
+##DATA TYPE=MASS SPECTRUM
+##ORIGIN=T.J. Bruno, Cent. Chem. Technol., NIST, Boulder, CO 80303, USA
+##OWNER=NIST Mass Spectrometry Data Center
+Collection (C) 2014 copyright by the U.S. Secretary of Commerce
+on behalf of the United States of America. All rights reserved.
+##CAS REGISTRY NO=354-33-6
+##$NIST MASS SPEC NO=142366
+##MOLFORM=C2 H F5
+##MW=120
+##$NIST SOURCE=MSDC
+##XUNITS=M/Z
+##YUNITS=RELATIVE INTENSITY
+##XFACTOR=1
+##YFACTOR=1
+##FIRSTX=19
+##LASTX=120
+##FIRSTY=80
+##MAXX=120
+##MINX=19
+##MAXY=9999
+##MINY=2
+##NPOINTS=20
+##PEAK TABLE=(XY..XY)
+19,80 20,33 24,31 25,29
+31,1892 41,104 43,48 50,697
+51,9999 52,104 62,16 63,17
+69,2223 70,25 81,16 82,32
+101,5341 102,111 119,103 120,2
+##END=

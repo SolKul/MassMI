@@ -1,0 +1,33 @@
+##TITLE=1,1,2-Trifluoroethane
+##JCAMP-DX=4.24
+##DATA TYPE=MASS SPECTRUM
+##ORIGIN=T.J. Bruno, Cent. Chem. Technol., NIST, Boulder, CO 80303, USA
+##OWNER=NIST Mass Spectrometry Data Center
+Collection (C) 2014 copyright by the U.S. Secretary of Commerce
+on behalf of the United States of America. All rights reserved.
+##CAS REGISTRY NO=430-66-0
+##$NIST MASS SPEC NO=142370
+##MOLFORM=C2 H3 F3
+##MW=84
+##$NIST SOURCE=MSDC
+##XUNITS=M/Z
+##YUNITS=RELATIVE INTENSITY
+##XFACTOR=1
+##YFACTOR=1
+##FIRSTX=19
+##LASTX=84
+##FIRSTY=136
+##MAXX=84
+##MINX=19
+##MAXY=9999
+##MINY=2
+##NPOINTS=26
+##PEAK TABLE=(XY..XY)
+19,136 20,76 24,122 25,430
+26,642 27,98 31,1903 32,2190
+33,4174 34,52 43,73 44,661
+45,4479 46,164 47,4 51,9999
+52,116 63,365 64,978 65,2535
+66,51 69,7 81,2 82,153
+83,388 84,537
+##END=

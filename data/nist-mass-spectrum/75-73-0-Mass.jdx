@@ -1,0 +1,27 @@
+##TITLE=Tetrafluoromethane
+##JCAMP-DX=4.24
+##DATA TYPE=MASS SPECTRUM
+##OWNER=NIST Mass Spectrometry Data Center
+Collection (C) 2014 copyright by the U.S. Secretary of Commerce
+on behalf of the United States of America. All rights reserved.
+##CAS REGISTRY NO=75-73-0
+##$NIST MASS SPEC NO=701
+##MOLFORM=C F4
+##MW=88
+##$NIST SOURCE=MSDC
+##XUNITS=M/Z
+##YUNITS=RELATIVE INTENSITY
+##XFACTOR=1
+##YFACTOR=1
+##FIRSTX=19
+##LASTX=88
+##FIRSTY=671
+##MAXX=88
+##MINX=19
+##MAXY=9999
+##MINY=10
+##NPOINTS=8
+##PEAK TABLE=(XY..XY)
+19,671 31,490 32,10 50,1181
+51,10 69,9999 70,110 88,10
+##END=

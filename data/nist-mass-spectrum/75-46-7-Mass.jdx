@@ -1,0 +1,28 @@
+##TITLE=Fluoroform
+##JCAMP-DX=4.24
+##DATA TYPE=MASS SPECTRUM
+##OWNER=NIST Mass Spectrometry Data Center
+Collection (C) 2014 copyright by the U.S. Secretary of Commerce
+on behalf of the United States of America. All rights reserved.
+##CAS REGISTRY NO=75-46-7
+##$NIST MASS SPEC NO=268
+##MOLFORM=C H F3
+##MW=70
+##$NIST SOURCE=MSDC
+##XUNITS=M/Z
+##YUNITS=RELATIVE INTENSITY
+##XFACTOR=1
+##YFACTOR=1
+##FIRSTX=12
+##LASTX=70
+##FIRSTY=40
+##MAXX=70
+##MINX=12
+##MAXY=9999
+##MINY=10
+##NPOINTS=12
+##PEAK TABLE=(XY..XY)
+12,40 13,20 19,70 20,10
+31,2402 32,230 39,10 50,1211
+51,6296 52,70 69,9999 70,110
+##END=

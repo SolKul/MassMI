@@ -1,0 +1,30 @@
+##TITLE=1,2-Difluoroethane
+##JCAMP-DX=4.24
+##DATA TYPE=MASS SPECTRUM
+##ORIGIN=Thomas J.Bruno
+##OWNER=NIST Mass Spectrometry Data Center
+Collection (C) 2014 copyright by the U.S. Secretary of Commerce
+on behalf of the United States of America. All rights reserved.
+##CAS REGISTRY NO=624-72-6
+##$NIST MASS SPEC NO=215683
+##MOLFORM=C2 H4 F2
+##MW=66
+##$NIST SOURCE=MSDC
+##XUNITS=M/Z
+##YUNITS=RELATIVE INTENSITY
+##XFACTOR=1
+##YFACTOR=1
+##FIRSTX=25
+##LASTX=67
+##FIRSTY=1611
+##MAXX=67
+##MINX=25
+##MAXY=9999
+##MINY=60
+##NPOINTS=15
+##PEAK TABLE=(XY..XY)
+25,1611 26,4053 31,3623 33,9999
+34,640 44,2332 45,9788 46,9868
+47,2612 51,300 63,620 64,1411
+65,1931 66,2752 67,60
+##END=
