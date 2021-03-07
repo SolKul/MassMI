@@ -1,2 +1,5 @@
 .gitkeep
 .ipynb_checkpoints/*
+*.pyc
+.vscode/*
+for_debug.py
