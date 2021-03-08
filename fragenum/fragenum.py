@@ -327,10 +327,10 @@ class CombProducts:
         for i in range(ar_bond_cons.shape[0]):
             l_base=[]
             for j in range(ar_bond_cons.shape[1]):
-                l_base.append(Base_n_to_10(ar_bond_cons[i,j,:],self.vlc_list[j]+1))
-                #隣接行列を原子価+1進数とみなして十進数に直す。
+                #隣接行列の一つ一つの行を原子価+1進数とみなして十進数に直す。
                 #この十進数にした数字で並び替えて、
                 #同型のグラフを見つけ出す
+                l_base.append(Base_n_to_10(ar_bond_cons[i,j,:],self.vlc_list[j]+1))
             l_l_base.append(l_base)
             #十進数に直した数字のリストをリストに追加
         ar_base=np.array(l_l_base)
@@ -359,6 +359,28 @@ class CombProducts:
                 #カノニカルラベルがユニークなもののindexを追加
                 l_cons_b.append(i)
         self.ar_bond_can=ar_bond_cons[l_cons_b]
+
+        # 対称行列にする。
+        for i in range(self.ar_bond_can.shape[0]):
+            for j in range(self.ar_bond_can.shape[1]):
+                self.ar_bond_can[i,:j,j]=self.ar_bond_can[i,j,:j]
+                #i,i要素はラジカルなので原子価から結合数を引く
+                num_radical=\
+                    self.vlc_list[j]-\
+                    self.ar_bond_can[i,:j,j].sum()-\
+                    self.ar_bond_can[i,j+1:,j].sum()
+                self.ar_bond_can[i,j,j]=num_radical
+                if num_radical == 0:
+                    continue
+                for k in range(j):
+                    if not self.ar_bond_can[i,j,k]>0:
+                        break
+                    if self.ar_bond_can[i,j,j] == 0:
+                        break
+                    if self.ar_bond_can[i,k,k] == 0:
+                        
+
+
 
     def GenProComb(self):
         self.CalcComb()
