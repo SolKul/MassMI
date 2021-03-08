@@ -1,7 +1,6 @@
 """
-原子記号のリストから、分子を列挙する
+原子のリスト、またはmolに含まれる原子のリストから、分子を列挙する
 """
-
 
 import numpy as np
 import itertools
@@ -15,6 +14,9 @@ def disp100mol(mol):
     display(im_mol.resize((150,150),resample=5))
     
 def Base_n_to_10(l_X,n):
+    """
+    n進数を10進数に直す。
+    """
     out = 0
     for i in range(1,len(l_X)+1):
         out += int(l_X[-i])*(n**(i-1))
@@ -67,45 +69,49 @@ class Compound:
     """
     隣接行列からmolを生成するクラス
 
-    m_o_b :隣接行列
+    Args:
+        bond_mtx (:obj:`np.array`): 隣接行列
+        atm_ind_list (list): Product内のアルゴリズムで、同じ分子に属していると判定された原子のインデックス
     """
-    def __init__(self,l_atmind,l_o_atm,m_o_b):
-        self.l_atm=l_atmind.copy()
-        #l_atmindを新しく化合物とする
-        self.l_o_atm=l_o_atm.copy()
+    def __init__(
+        self,
+        atm_ind_list,
+        atm_list,
+        bond_mtx):
+        self.atm_ind_list=atm_ind_list.copy()
         #もとの原子リストをコピー
-        self.m_o_b=m_o_b
+        self.atm_list=atm_list.copy()
         #もとの隣接行列をコピー
-        self.d_atm={}
-        for i in l_atmind:
-            self.d_atm[i]=l_o_atm[i]
-        #化合物内の原子辞書をつくる
+        self.bond_mtx=bond_mtx
 
     def addatm(self,i):
-        self.l_atm.append(i)
-        self.d_atm[i]=self.l_o_atm[i]
-        #iを新しく化合物に追加
+        """
+        i番目の原子を新しく化合物に追加
+        """
+        self.atm_ind_list.append(i)
 
-    def exatms(self,l_t_atm):
-        self.l_atm.extend(l_t_atm)
-        for i in l_t_atm:
-            self.d_atm[i]=self.l_o_atm[i]
-        #l_t_atmを新しく化合物に追加
+    def exatms(self,ex_atm_ind_list):
+        """
+        ex_atm_ind_listで指定される原子を新しく化合物に追加
+        """
+        self.atm_ind_list.extend(ex_atm_ind_list)
     
     def GenMol(self):
         rwmol = Chem.RWMol()
-        for i in self.l_atm:
+        for i in self.atm_ind_list:
             # rwmolにAtomを追加
-            rwmol.AddAtom(Chem.AtomFromSmiles("["+self.d_atm[i]+"]"))
-        for i in range(len(self.l_atm)):
+            rwmol.AddAtom(self.atm_list[i])
+        for i in range(len(self.atm_ind_list)):
             # 対角要素はラジカルの数
-            num_radical=self.m_o_b[self.l_atm[i],self.l_atm[i]]
+            num_radical=self.bond_mtx[\
+                self.atm_ind_list[i],\
+                self.atm_ind_list[i]]
             if num_radical>=1:
                 atom=rwmol.GetAtomWithIdx(i)
                 atom.SetNumRadicalElectrons(int(num_radical))
             for j in range(i):
                 # 結合を設定
-                bond_num=self.m_o_b[self.l_atm[i],self.l_atm[j]]
+                bond_num=self.bond_mtx[self.atm_ind_list[i],self.atm_ind_list[j]]
                 if bond_num>=1:
                     rwmol.AddBond(i,j,bond_d[bond_num])
         self.cmol=Chem.AddHs(rwmol.GetMol())
@@ -115,34 +121,42 @@ class Products:
     """
     隣接行列を化合物ごとに分離するクラス
     """
-    def __init__(self,l_p_atm,m_bnd,vlc_list):
-        self.l_p_atm=l_p_atm
-        self.m_bnd=m_bnd
+    def __init__(
+        self,
+        atm_list,
+        bond_mtx,
+        vlc_list):
+
+        self.atm_list=atm_list
+        self.bond_mtx=bond_mtx
         self.vlc_list=vlc_list
         self.generated=False
+
     def SmtrBnd(self):
         #対称行列にして、ラジカルも計算
-        for i in range(self.m_bnd.shape[0]):
-            self.m_bnd[:i,i]=self.m_bnd[i,:i]
+        for i in range(self.bond_mtx.shape[0]):
+            self.bond_mtx[:i,i]=self.bond_mtx[i,:i]
             #対称行列にする
-            self.m_bnd[i,i]=self.vlc_list[i]-self.m_bnd[:i,i].sum()-self.m_bnd[i+1:,i].sum()
+            self.bond_mtx[i,i]=\
+                self.vlc_list[i]-self.bond_mtx[:i,i].sum()-self.bond_mtx[i+1:,i].sum()
             #i,i要素はラジカルなので原子価から結合数を引く
+
     def SplitComp(self):
         comp_c=0
         # どの原子がどの原子群に属しているかというリスト
-        self.ar_c_t=(np.ones([len(self.l_p_atm)])*-1).astype('int')
+        self.ar_c_t=(np.ones([len(self.atm_list)])*-1).astype('int')
         self.l_comp=[]
-        for i in range(self.m_bnd.shape[0]):
+        for i in range(self.bond_mtx.shape[0]):
             #下三角行列のみ走査
             for j in range(i):
-                if(self.m_bnd[i,j]==0):
+                if(self.bond_mtx[i,j]==0):
                     continue
                 ar_b_c=self.ar_c_t[[i,j]]==[-1,-1]
                 #原子が原子群に属しているかいないかのチェック
                 if(np.all(ar_b_c)):
                     #i,jがどちらとも属していない場合
                     self.ar_c_t[[i,j]]=comp_c
-                    self.l_comp.append(Compound([i,j],self.l_p_atm,self.m_bnd))
+                    self.l_comp.append(Compound([i,j],self.atm_list,self.bond_mtx))
                     comp_c+=1
                 elif(ar_b_c[0]):
                     #iだけが所属していない場合
@@ -166,12 +180,13 @@ class Products:
                         self.l_comp[self.ar_c_t[j]].exatms(Comp.l_atm)
                         for atm_num in Comp.l_atm:
                             self.ar_c_t[atm_num]=self.ar_c_t[j]
-        for i in range(self.m_bnd.shape[0]):
+        for i in range(self.bond_mtx.shape[0]):
             if(self.ar_c_t[i]==-1):
                 #原子群に分けた時点でどこにも所属していないものは原子
                 self.ar_c_t[i]=comp_c
-                self.l_comp.append(Compound([i],self.l_p_atm,self.m_bnd))
+                self.l_comp.append(Compound([i],self.atm_list,self.bond_mtx))
                 comp_c+=1
+
     def GenMols(self):
         #Molオブジェクトを生成
         self.SmtrBnd()
@@ -197,8 +212,6 @@ class Products:
         Conc_h_mols(self.ar_mols)
         print(self.str_smiles)
 
-d_atm2vlc={'C':4,'H':1,'F':1,'O':2,'N':3}
-
 class CombProducts:
     """
     隣接行列を列挙し、生成物のリストを作るクラス
@@ -218,7 +231,6 @@ class CombProducts:
         self.prepare_atm(list(mol.GetAtoms()))
 
     def prepare_atm(self,atm_list):
-
         peri_tab=Chem.GetPeriodicTable()
         def default_val(atm):
             return peri_tab.GetDefaultValence(atm.GetAtomicNum())
@@ -238,7 +250,10 @@ class CombProducts:
 
         self.num_atm=len(self.atm_list)
 
-    def CalcComb(self):
+    def enumerate_bond_mtx(self):
+        """
+        重複組み合わせを用いて隣接行列を列挙する
+        """
         l_bond_p=[[[0]*self.num_atm]]
         for k in range(1,self.num_atm):
             #重複組み合わせの玉の種類。
@@ -268,6 +283,19 @@ class CombProducts:
                 else:
                     l_bond_r_p.append(l_bond)
             l_bond_p.append(l_bond_r_p)
+        return l_bond_p
+
+    def SmtrBnd(self):
+        #対称行列にして、ラジカルも計算
+        for i in range(self.bond_mtx.shape[0]):
+            self.bond_mtx[:i,i]=self.bond_mtx[i,:i]
+            #対称行列にする
+            self.bond_mtx[i,i]=\
+                self.vlc_list[i]-self.bond_mtx[:i,i].sum()-self.bond_mtx[i+1:,i].sum()
+            #i,i要素はラジカルなので原子価から結合数を引く
+
+    def CalcComb(self):
+        l_bond_p=self.enumerate_bond_mtx()
 
         ar_bond_p=np.array(list(itertools.product(*l_bond_p)))
         #隣接行列のある1行が取りうる行同士の直積
@@ -331,6 +359,7 @@ class CombProducts:
                 #カノニカルラベルがユニークなもののindexを追加
                 l_cons_b.append(i)
         self.ar_bond_can=ar_bond_cons[l_cons_b]
+
     def GenProComb(self):
         self.CalcComb()
         l_l_smiles=[]
@@ -338,7 +367,7 @@ class CombProducts:
         self.comb_c=0
         self.smiles_set=set()
         for i in range(self.ar_bond_can.shape[0]):
-            p_t=Products(self.l_p_atm,self.ar_bond_can[i],self.vlc_list)
+            p_t=Products(self.atm_list,self.ar_bond_can[i],self.vlc_list)
             p_t.GenMols()
             if p_t.str_smiles in l_l_smiles:
                 #smilesのリストにあれば飛ばす
