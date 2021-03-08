@@ -115,17 +115,17 @@ class Products:
     """
     隣接行列を化合物ごとに分離するクラス
     """
-    def __init__(self,l_p_atm,m_bnd,l_vlc):
+    def __init__(self,l_p_atm,m_bnd,vlc_list):
         self.l_p_atm=l_p_atm
         self.m_bnd=m_bnd
-        self.l_vlc=l_vlc
+        self.vlc_list=vlc_list
         self.generated=False
     def SmtrBnd(self):
         #対称行列にして、ラジカルも計算
         for i in range(self.m_bnd.shape[0]):
             self.m_bnd[:i,i]=self.m_bnd[i,:i]
             #対称行列にする
-            self.m_bnd[i,i]=self.l_vlc[i]-self.m_bnd[:i,i].sum()-self.m_bnd[i+1:,i].sum()
+            self.m_bnd[i,i]=self.vlc_list[i]-self.m_bnd[:i,i].sum()-self.m_bnd[i+1:,i].sum()
             #i,i要素はラジカルなので原子価から結合数を引く
     def SplitComp(self):
         comp_c=0
@@ -203,41 +203,65 @@ class CombProducts:
     """
     隣接行列を列挙し、生成物のリストを作るクラス
     """
-    def __init__(self,l_p_atm,b_exist_atm=True,b_exist_rad=True):
-        l_p_atm=l_p_atm.copy()
-        l_vlc=[]
-        for atm in l_p_atm:
-            l_vlc.append(d_atm2vlc[atm])
-        arg_s=np.argsort(l_vlc)[::-1]
-        self.l_p_atm=np.array(l_p_atm)[arg_s]
-        self.l_vlc=np.array(l_vlc)[arg_s]
-        self.n_atm=len(l_p_atm)
+    def __init__(self,b_exist_atm=True,b_exist_rad=True):
         self.b_exist_atm=b_exist_atm
         self.b_exist_rad=b_exist_rad
         self.generated=False
+
+    def set_atm_list(self,str_atm_list):
+        atm_list=[]
+        for str_atm in str_atm_list:
+            atm_list.append(Chem.AtomFromSmiles("["+str_atm+"]"))
+        self.prepare_atm(atm_list)
+    
+    def set_mol(self,mol):
+        self.prepare_atm(list(mol.GetAtoms()))
+
+    def prepare_atm(self,atm_list):
+
+        peri_tab=Chem.GetPeriodicTable()
+        def default_val(atm):
+            return peri_tab.GetDefaultValence(atm.GetAtomicNum())
+
+        # 1.原子価、2.原子番号の優先順位で降順でソート
+        self.atm_list=sorted(
+            atm_list,
+            key=lambda x: (default_val(x),x.GetAtomicNum()),
+            reverse=True)
+
+        # 原子番号と原子価のリストを用意
+        self.atm_no_list=[]
+        self.vlc_list=[]
+        for atm in self.atm_list:
+            self.atm_no_list.append(atm.GetAtomicNum())
+            self.vlc_list.append(default_val(atm))
+
+        self.num_atm=len(self.atm_list)
+
     def CalcComb(self):
-        l_bond_p=[[[0]*self.n_atm]]
-        #取りうる隣接行列の行
-        #最初の行は後から決まるので0で良い
-        for k in range(1,self.n_atm):
-            #注目すればいい原子の数
+        l_bond_p=[[[0]*self.num_atm]]
+        for k in range(1,self.num_atm):
+            #重複組み合わせの玉の種類。
             #三角形の横方向の数+1
 
             #詳しくは足してnになる組み合わせの数の応用の
             #足してn以下になる組み合わせの数を参照
-            n_atm_r=k+1
+            conb_rep_kind=k+1
             # 結合する相手の原子の数への結合数が
-            # 足して価電子数(n_valence)以下なるような場合の数
+            # 足して価電子数(valence_num)以下なるような場合の数
             # =注目している結合する相手の原子の数+1種類の玉から
             # 重複して選ぶときの場合の数
-            n_valence=self.l_vlc[k]
-            l_cr=list(itertools.combinations_with_replacement(list(range(n_atm_r)),n_valence))
+            valence_num=self.vlc_list[k]
+            comb_rep_list=list(itertools.combinations_with_replacement(
+                list(range(conb_rep_kind)),
+                valence_num))
             l_bond_r_p=[]
             #隣接行列のある1行が取りうる行のリスト
-            for i in range(len(l_cr)):
-                l_bond=[0]*self.n_atm
-                for j in range(n_atm_r-1):
-                    b_num=l_cr[i].count(j)
+            for i in range(len(comb_rep_list)):
+                l_bond=[0]*self.num_atm
+                for j in range(conb_rep_kind-1):
+                    # 結合数=ある玉の数
+                    b_num=comb_rep_list[i].count(j)
                     if(b_num>=4):
                         break
                     l_bond[j]=b_num
@@ -251,15 +275,15 @@ class CombProducts:
             for j in range(ar_bond_p.shape[1]):
                 ar_bond_p[i,:j,j]=ar_bond_p[i,j,:j]
                 #対称行列にする
-        ar_b_cons=ar_bond_p.sum(axis=1)<=np.array(self.l_vlc)
+        ar_b_cons=ar_bond_p.sum(axis=1)<=np.array(self.vlc_list)
         #結合数が原子価以下のものをbooleanとして抽出
-        if(not(self.b_exist_rad)):
+        if not self.b_exist_rad:
             #ラジカルの存在を許さない場合
-            ar_b_cons=ar_bond_p.sum(axis=1)==np.array(self.l_vlc)
+            ar_b_cons=ar_bond_p.sum(axis=1)==np.array(self.vlc_list)
         ar_b_ind=np.all(ar_b_cons,axis=1)
         #すべての原子が、結合数が原子価以下であったらその隣接行列は整合性があると判断する
         #その整合性のあるもののindex
-        if(not(self.b_exist_atm)):
+        if not self.b_exist_atm:
             #原子の存在を許さない場合
             ar_b_atm=np.all(ar_bond_p.sum(axis=1)!=0,axis=1)
             ar_b_ind=np.logical_and(ar_b_atm,ar_b_ind)
@@ -275,7 +299,7 @@ class CombProducts:
         for i in range(ar_bond_cons.shape[0]):
             l_base=[]
             for j in range(ar_bond_cons.shape[1]):
-                l_base.append(Base_n_to_10(ar_bond_cons[i,j,:],self.l_vlc[j]+1))
+                l_base.append(Base_n_to_10(ar_bond_cons[i,j,:],self.vlc_list[j]+1))
                 #隣接行列を原子価+1進数とみなして十進数に直す。
                 #この十進数にした数字で並び替えて、
                 #同型のグラフを見つけ出す
@@ -287,20 +311,20 @@ class CombProducts:
         #ある一つのグラフに対して1意に決まるカノニカルラベルと言える
         #(厳密には違うが)
         
-        ar_c_atm=np.array(self.l_p_atm)
+        atm_no_array=np.array(self.atm_no_list)
         #原子種のリストをarray化
-        ar_uni=np.unique(ar_c_atm)
+        ar_uni=np.unique(self.atm_no_list)
         #原子のリストのユニークな要素を取り出し
         l_c_table=[]
         l_cons_b=[]
         for i in range(len(ar_base)):
             l_sorted=[]
-            for atm in ar_uni:
-                ar_uni_b=(ar_c_atm==atm)
+            for atm_no in ar_uni:
                 #原子リストのうち、注目している原子種と一致するところをbooleanで取り出す
-                l_sorted.extend(np.sort(ar_base[i][ar_uni_b]))
+                ar_uni_b=(atm_no_array==atm_no)
                 #そのbooleanで取り出してsortし、原子種ごとにカノニカルラベルを作成
                 #それをリストに追加し、グラフ全体のカノニカルラベルとする。
+                l_sorted.extend(np.sort(ar_base[i][ar_uni_b]))
             if l_sorted not in l_c_table:
                 #そのグラフ全体のカノニカルラベルがチェック表になければ、追加
                 l_c_table.append(l_sorted)
@@ -314,7 +338,7 @@ class CombProducts:
         self.comb_c=0
         self.smiles_set=set()
         for i in range(self.ar_bond_can.shape[0]):
-            p_t=Products(self.l_p_atm,self.ar_bond_can[i],self.l_vlc)
+            p_t=Products(self.l_p_atm,self.ar_bond_can[i],self.vlc_list)
             p_t.GenMols()
             if p_t.str_smiles in l_l_smiles:
                 #smilesのリストにあれば飛ばす
