@@ -9,6 +9,8 @@ from rdkit.Chem import AllChem, Draw
 from PIL import Image
 import matplotlib.pyplot as plt
 
+from . import mol_helper
+
 def disp100mol(mol):
     im_mol=Draw.MolToImage(mol,size=(200,200))
     display(im_mol.resize((150,150),resample=5))
@@ -114,8 +116,9 @@ class Compound:
                 bond_num=self.bond_mtx[self.atm_ind_list[i],self.atm_ind_list[j]]
                 if bond_num>=1:
                     rwmol.AddBond(i,j,bond_d[bond_num])
-        self.cmol=Chem.AddHs(rwmol.GetMol())
-
+        self.cmol=mol_helper.mol_to_smi_to_mol(
+            (Chem.AddHs(rwmol.GetMol())),
+            addHs=True)
 
 class Products:
     """
@@ -131,15 +134,6 @@ class Products:
         self.bond_mtx=bond_mtx
         self.vlc_list=vlc_list
         self.generated=False
-
-    def SmtrBnd(self):
-        #対称行列にして、ラジカルも計算
-        for i in range(self.bond_mtx.shape[0]):
-            self.bond_mtx[:i,i]=self.bond_mtx[i,:i]
-            #対称行列にする
-            self.bond_mtx[i,i]=\
-                self.vlc_list[i]-self.bond_mtx[:i,i].sum()-self.bond_mtx[i+1:,i].sum()
-            #i,i要素はラジカルなので原子価から結合数を引く
 
     def SplitComp(self):
         comp_c=0
@@ -189,7 +183,6 @@ class Products:
 
     def GenMols(self):
         #Molオブジェクトを生成
-        self.SmtrBnd()
         self.SplitComp()
         l_mols=[]
         l_smiles=[]
@@ -198,10 +191,10 @@ class Products:
             l_mols.append(Comp.cmol)
             l_smiles.append(Chem.MolToSmiles(Comp.cmol))
         arg_s=np.argsort(l_smiles)
-        self.ar_mols=np.array(l_mols)[arg_s]
-        self.ar_smiles=np.array(l_smiles)[arg_s]
+        self.mol_list=np.array(l_mols)[arg_s].tolist()
+        self.smiles_list=sorted(l_smiles)
         self.str_smiles=''
-        for smile in self.ar_smiles:
+        for smile in self.smiles_list:
             self.str_smiles+=' '+smile
 
         self.generated=True
@@ -209,7 +202,7 @@ class Products:
     def Dispmols(self):
         if not self.generated:
             raise ValueError("not generated")
-        Conc_h_mols(self.ar_mols)
+        Conc_h_mols(self.mol_list)
         print(self.str_smiles)
 
 class CombProducts:
@@ -285,15 +278,6 @@ class CombProducts:
             l_bond_p.append(l_bond_r_p)
         return l_bond_p
 
-    def SmtrBnd(self):
-        #対称行列にして、ラジカルも計算
-        for i in range(self.bond_mtx.shape[0]):
-            self.bond_mtx[:i,i]=self.bond_mtx[i,:i]
-            #対称行列にする
-            self.bond_mtx[i,i]=\
-                self.vlc_list[i]-self.bond_mtx[:i,i].sum()-self.bond_mtx[i+1:,i].sum()
-            #i,i要素はラジカルなので原子価から結合数を引く
-
     def CalcComb(self):
         l_bond_p=self.enumerate_bond_mtx()
 
@@ -360,6 +344,7 @@ class CombProducts:
                 l_cons_b.append(i)
         self.ar_bond_can=ar_bond_cons[l_cons_b]
 
+        no_radical_bond_list=[]
         # 対称行列にする。
         for i in range(self.ar_bond_can.shape[0]):
             for j in range(self.ar_bond_can.shape[1]):
@@ -370,18 +355,32 @@ class CombProducts:
                     self.ar_bond_can[i,:j,j].sum()-\
                     self.ar_bond_can[i,j+1:,j].sum()
                 self.ar_bond_can[i,j,j]=num_radical
+                # もしラジカルでなければ、以降の処理をスキップし、
+                # 次のfor文(次の行)に移動
                 if num_radical == 0:
                     continue
                 for k in range(j):
+                    # 注目原子(k)がラジカルでなければ、以降の処理をスキップし、
+                    # 次の原子に移動
                     if not self.ar_bond_can[i,j,k]>0:
-                        break
-                    if self.ar_bond_can[i,j,j] == 0:
-                        break
+                        continue
+                    # 行の原子(j)と注目原子(k)の結合していなければ
                     if self.ar_bond_can[i,k,k] == 0:
-                        
-
-
-
+                        continue
+                    # 上のすべての条件を満たした場合、ラジカル同士の結合があると判断
+                    # beakしelseは飛ばす。
+                    break
+                else:
+                    continue
+                # ラジカル同士の結合がある場合ここに飛ぶ
+                # beakしelseは飛ばす。
+                break
+            else:
+                # ラジカル同士の結合がないと判断されれば
+                # リストに追加
+                no_radical_bond_list.append(i)
+        self.ar_bond_can=self.ar_bond_can[no_radical_bond_list]
+                    
     def GenProComb(self):
         self.CalcComb()
         l_l_smiles=[]
@@ -389,16 +388,20 @@ class CombProducts:
         self.comb_c=0
         self.smiles_set=set()
         for i in range(self.ar_bond_can.shape[0]):
-            p_t=Products(self.atm_list,self.ar_bond_can[i],self.vlc_list)
+            p_t=Products(
+                self.atm_list,
+                self.ar_bond_can[i],
+                self.vlc_list)
             p_t.GenMols()
             if p_t.str_smiles in l_l_smiles:
                 #smilesのリストにあれば飛ばす
                 continue
             l_l_smiles.append(p_t.str_smiles)
             self.l_prod.append(p_t)
-            self.smiles_set=self.smiles_set.union(p_t.ar_smiles.tolist())
+            self.smiles_set=self.smiles_set.union(p_t.smiles_list)
             self.comb_c+=1
         self.generated=True
+
     def DispComb(self):
         if not self.generated:
             raise ValueError("not generated")
