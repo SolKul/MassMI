@@ -57,9 +57,11 @@ class SpanMolEnum:
     def __init__(
             self,
             b_exist_rad=True,
-            max_bias_rad_num=1):
+            max_bias_rad_num=1,
+            max_bias_bonds=1):
         self.b_exist_rad = b_exist_rad
         self.max_bias_rad_num=max_bias_rad_num
+        self.max_bias_bonds=max_bias_bonds
         self.generated = False
 
     def set_atm_list(self, str_atm_list):
@@ -192,9 +194,10 @@ class SpanMolEnum:
                 # カノニカルラベルがユニークなもののindexを追加
                 l_cons_b.append(i)
         n_bond_mtx = bond_mtx[l_cons_b, :, :]
+        cand_num=len(l_cons_b)
 
         # 一つの候補を取り出し
-        for ind in range(len(l_cons_b)):
+        for ind in range(cand_num):
             for i in range(self.atm_num):
                 rad_num = self.vlc_list[i]-np.sum(n_bond_mtx[ind, i, :])
                 n_bond_mtx[ind, i, i] = rad_num
@@ -218,38 +221,26 @@ class SpanMolEnum:
                     n_bond_mtx[ind, j, j] -= min_rad_num
                     n_bond_mtx[ind, i, j] += min_rad_num
                     n_bond_mtx[ind, j, i] += min_rad_num
-
+            
+        # 原子価4の原子の数
         vlc_mt_4=self.atm_num
         for i,vlc_num in enumerate(self.vlc_list):
             if vlc_num<4:
                 vlc_mt_4=i
                 break
 
-        no_bias_list=[]
-        for ind in range(len(l_cons_b)):
-            for i in range(vlc_mt_4):
-                # ある別の原子とのつながりを見る
-                for j in range(i,vlc_mt_4):
-                    if n_bond_mtx[ind, i, j] == 0:
-                        continue
-                    # C同士の４重結合
-                    if n_bond_mtx[ind, i, j] > 3:
-                        break
-                    # C同士が繋がっていて、ラジカルの差が指定以上なら、除外
-                    if abs(n_bond_mtx[ind, j, j] - n_bond_mtx[ind, i, i])>self.max_bias_rad_num:
-                        break
-                else:
-                    # 正常にfor、もしくはcontinueされればここに飛ぶ
-                    continue
-                # C同士が繋がっていて、ラジカルの差が2以上ならここに飛ぶ
-                # もしくはCしかない化合物
-                break
-            else:
-                # 正常にfor、もしくはcontinueされればここに飛ぶ
-                # OKな原子はno_bias_listに追加。
-                no_bias_list.append(ind)
-                continue
-            
+        # 原子価4の原子の数が2以下なら
+        if vlc_mt_4 <3:
+            no_bias_list=self.bias_check_u3(
+                n_bond_mtx,
+                cand_num,
+                vlc_mt_4)
+        else:
+            no_bias_list=self.bias_check_o3(
+                n_bond_mtx,
+                cand_num,
+                vlc_mt_4)
+
         n_bond_mtx=n_bond_mtx[no_bias_list,:,:]
 
         self.smi_set = set()
@@ -272,6 +263,101 @@ class SpanMolEnum:
                         mol = rwmol.AddBond(i, j, bond_d[bond_num])
             smi = Chem.MolToSmiles(rwmol)
             self.smi_set.add(smi)
+
+    def bias_check_u3(
+            self,
+            n_bond_mtx,
+            cand_num,
+            vlc_mt_4):
+        """
+        原子価4の原子の数が2以下の場合、
+        C同士が繋がっていて、ラジカルの差が指定以上か、
+        Cしかない化合物の場合を除外
+        """
+        no_bias_list=[]
+        for ind in range(cand_num):
+            for i in range(vlc_mt_4):
+                # ある別の原子とのつながりを見る
+                for j in range(i):
+                    if n_bond_mtx[ind, i, j] == 0:
+                        continue
+                    # C同士の４重結合
+                    if n_bond_mtx[ind, i, j] > 3:
+                        break
+                    # C同士が繋がっていて、ラジカルの差が指定以上なら、除外
+                    if abs(n_bond_mtx[ind, j, j] - n_bond_mtx[ind, i, i])>self.max_bias_rad_num:
+                        break
+                    else:
+                        # 正常にfor、もしくはcontinueされればここに飛ぶ
+                        continue
+                    break
+                else:
+                    # 正常にfor、もしくはcontinueされればここに飛ぶ
+                    continue
+                # C同士が繋がっていて、ラジカルの差が2以上ならここに飛ぶ
+                # もしくはCしかない化合物
+                break
+            else:
+                # 正常にfor、もしくはcontinueされればここに飛ぶ
+                # OKな原子はno_bias_listに追加。
+                no_bias_list.append(ind)
+                continue
+
+        return no_bias_list
+
+    def bias_check_o3(
+            self,
+            n_bond_mtx,
+            cand_num,
+            vlc_mt_4):
+        """
+        原子価4の原子の数が2以下なら
+        C同士が繋がっていて、ラジカルの差が指定以上か、
+        原子価4同士の結合の差が指定以上か、
+        Cしかない化合物の場合を除外
+        """
+        vlc4_id_not=np.logical_not(np.identity(vlc_mt_4,bool))
+        vlc4_sel=np.zeros([vlc_mt_4,self.atm_num],bool)
+        vlc4_sel[:,:vlc_mt_4]=vlc4_id_not
+        no_bias_list=[]
+        for ind in range(cand_num):
+            for i in range(vlc_mt_4):
+                # 原子価4以上、自分以外、結合数0以上の注目bond
+                atn_bond=np.logical_and(n_bond_mtx[ind,i,:]>0,vlc4_sel[i,:])
+                vlc4_minor_bond=min(n_bond_mtx[ind,i,atn_bond])
+                vlc4_major_bond=max(n_bond_mtx[ind,i,atn_bond])
+                # 原子価4同士の結合の差が指定以上なら
+                if (vlc4_major_bond-vlc4_minor_bond)>self.max_bias_bonds:
+                    break
+                # ある別の原子とのつながりを見る
+                atn_bonds=np.zeros(self.atm_num,bool)
+                for j in range(i):
+                    if n_bond_mtx[ind, i, j] == 0:
+                        continue
+                    # C同士の４重結合
+                    if n_bond_mtx[ind, i, j] > 3:
+                        break
+                    # C同士が繋がっていて、ラジカルの差が指定以上なら、除外
+                    if abs(n_bond_mtx[ind, j, j] - n_bond_mtx[ind, i, i])>self.max_bias_rad_num:
+                        break
+                    else:
+                        continue
+                    break
+                else:
+                    # 正常にfor、もしくはcontinueされればここに飛ぶ
+                    continue
+                # C同士が繋がっていて、ラジカルの差が2以上か、
+                # 原子価4同士の結合の差が指定以上か、
+                # Cしかない化合物の場合ここに飛ぶ
+                break
+            else:
+                # 正常にfor、もしくはcontinueされればここに飛ぶ
+                # OKな原子はno_bias_listに追加。
+                no_bias_list.append(ind)
+                continue
+
+        return no_bias_list
+
 
     def iter_display_graph(self, limit_no=10):
         """
