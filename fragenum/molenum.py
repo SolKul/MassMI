@@ -120,7 +120,10 @@ class SpanMolEnum:
                 self.bond_universe.append(atm_comb)
 
     def generate_mol(self):
-        if len(self.bond_universe)==0:
+        if self.atm_num == 1:
+            str_atm=self.atm_list[0].GetSymbol()
+            self.smi_set={"["+str_atm+"]"}
+        elif len(self.bond_universe)==0:
             self.smi_set=set()
         else:
             self.enumerate()
@@ -132,12 +135,11 @@ class SpanMolEnum:
         # 全域グラフのみ列挙
         self.paths = GraphSet.graphs(
             vertex_groups=[self.atm_no_list],
-            degree_constraints=self.degree_constraints)
+            degree_constraints=self.degree_constraints,
+            no_loop=True)
         self.paths_num = len(self.paths)
-        print("combinations:", self.paths_num)
 
     def narrow_cands(self):
-        self.enumerate()
 
         bond_mtx = np.zeros(
             [self.paths_num, self.atm_num, self.atm_num], dtype=int)
@@ -250,8 +252,6 @@ class SpanMolEnum:
             
         n_bond_mtx=n_bond_mtx[no_bias_list,:,:]
 
-        print("narrowed combinations:", len(no_bias_list))
-
         self.smi_set = set()
 
         for ind in range(len(no_bias_list)):
@@ -273,8 +273,6 @@ class SpanMolEnum:
             smi = Chem.MolToSmiles(rwmol)
             self.smi_set.add(smi)
 
-        print("generated mols:", len(self.smi_set))
-
     def iter_display_graph(self, limit_no=10):
         """
         networkxの機能でグラフを描写する
@@ -283,19 +281,20 @@ class SpanMolEnum:
         import matplotlib.pyplot as plt
         save_to_graph = GraphSet.converters["to_graph"]
         GraphSet.converters["to_graph"] = nx.Graph
-        for path in self.paths:
+        try:
+            for path in self.paths:
 
-            node_color = []
-            for node in path.nodes:
-                node_color.append(
-                    self.atm_colors_list[node])
-            nx.draw_networkx(
-                path,
-                node_color=node_color)
-            plt.show()
+                node_color = []
+                for node in path.nodes:
+                    node_color.append(
+                        self.atm_colors_list[node])
+                nx.draw_networkx(
+                    path,
+                    node_color=node_color)
+                plt.show()
 
-            limit_no -= 1
-            if limit_no == 0:
-                break
-
-        GraphSet.converters["to_graph"] = save_to_graph
+                limit_no -= 1
+                if limit_no == 0:
+                    break
+        finally:
+            GraphSet.converters["to_graph"] = save_to_graph
