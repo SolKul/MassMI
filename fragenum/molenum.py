@@ -124,7 +124,8 @@ class SpanMolEnum:
             self.smi_set=set()
         else:
             self.enumerate()
-            self.narrow_cands()
+            self.narrow_cands() 
+        self.generated=True
 
     def enumerate(self):
         GraphSet.set_universe(self.bond_universe)
