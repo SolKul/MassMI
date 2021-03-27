@@ -181,7 +181,7 @@ class SpanMolEnum:
             aten_atm_bool.append(atomic_no_array == atm_no)
 
         l_c_table = []
-        l_cons_b = []
+        uni_bool = [False]*self.paths_num
         for i in range(self.paths_num):
             l_sorted = []
             for j in range(uni_atm_num):
@@ -192,9 +192,9 @@ class SpanMolEnum:
                 # そのグラフ全体のカノニカルラベルがチェック表になければ、追加
                 l_c_table.append(l_sorted)
                 # カノニカルラベルがユニークなもののindexを追加
-                l_cons_b.append(i)
-        n_bond_mtx = bond_mtx[l_cons_b, :, :]
-        cand_num=len(l_cons_b)
+                uni_bool[i]=True
+        n_bond_mtx = bond_mtx[uni_bool, :, :]
+        cand_num=round(np.sum(uni_bool))
 
         # 一つの候補を取り出し
         for ind in range(cand_num):
@@ -231,21 +231,22 @@ class SpanMolEnum:
 
         # 原子価4の原子の数が2以下なら
         if vlc_mt_4 <3:
-            no_bias_list=self.bias_check_u3(
+            no_bias_bool=self.bias_check_u3(
                 n_bond_mtx,
                 cand_num,
                 vlc_mt_4)
         else:
-            no_bias_list=self.bias_check_o3(
+            no_bias_bool=self.bias_check_o3(
                 n_bond_mtx,
                 cand_num,
                 vlc_mt_4)
 
-        n_bond_mtx=n_bond_mtx[no_bias_list,:,:]
+        n_bond_mtx=n_bond_mtx[no_bias_bool,:,:]
+        narrow_num=round(np.sum(no_bias_bool))
 
         self.smi_set = set()
 
-        for ind in range(len(no_bias_list)):
+        for ind in range(narrow_num):
             rwmol = Chem.RWMol()
             for atm in self.atm_list:
                 # rwmolにAtomを追加
@@ -274,7 +275,7 @@ class SpanMolEnum:
         C同士が繋がっていて、ラジカルの差が指定以上か、
         Cしかない化合物の場合を除外
         """
-        no_bias_list=[]
+        no_bias_bool=[False]*cand_num
         for ind in range(cand_num):
             for i in range(vlc_mt_4):
                 # ある別の原子とのつながりを見る
@@ -300,10 +301,10 @@ class SpanMolEnum:
             else:
                 # 正常にfor、もしくはcontinueされればここに飛ぶ
                 # OKな原子はno_bias_listに追加。
-                no_bias_list.append(ind)
+                no_bias_bool[ind]=True
                 continue
 
-        return no_bias_list
+        return no_bias_bool
 
     def bias_check_o3(
             self,
@@ -319,7 +320,7 @@ class SpanMolEnum:
         vlc4_id_not=np.logical_not(np.identity(vlc_mt_4,bool))
         vlc4_sel=np.zeros([vlc_mt_4,self.atm_num],bool)
         vlc4_sel[:,:vlc_mt_4]=vlc4_id_not
-        no_bias_list=[]
+        no_bias_bool=[False]*cand_num
         for ind in range(cand_num):
             for i in range(vlc_mt_4):
                 # 原子価4以上、自分以外、結合数0以上の注目bond
@@ -353,10 +354,10 @@ class SpanMolEnum:
             else:
                 # 正常にfor、もしくはcontinueされればここに飛ぶ
                 # OKな原子はno_bias_listに追加。
-                no_bias_list.append(ind)
+                no_bias_bool[ind]=True
                 continue
 
-        return no_bias_list
+        return no_bias_bool
 
 
     def iter_display_graph(self, limit_no=10):
