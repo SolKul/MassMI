@@ -94,7 +94,8 @@ class SpanMolEnum:
             # 次数の制約を決定する
             vlc_num = default_vlc(atm)
             if vlc_num > 1:
-                self.degree_constraints[i] = range(1, default_vlc(atm)+1)
+                # 結合次数を1~原子価にすることで二重結合も発生させる
+                self.degree_constraints[i] = range(1, vlc_num+1)
             else:
                 self.degree_constraints[i] = 1
 
@@ -123,8 +124,11 @@ class SpanMolEnum:
 
     def generate_mol(self):
         if self.atm_num == 1:
-            str_atm=self.atm_list[0].GetSymbol()
-            self.smi_set={"["+str_atm+"]"}
+            if self.b_exist_rad:
+                str_atm=self.atm_list[0].GetSymbol()
+                self.smi_set={"["+str_atm+"]"}
+            else:
+                self.smi_set=set()
         elif len(self.bond_universe)==0:
             self.smi_set=set()
         else:
@@ -221,7 +225,20 @@ class SpanMolEnum:
                     n_bond_mtx[ind, j, j] -= min_rad_num
                     n_bond_mtx[ind, i, j] += min_rad_num
                     n_bond_mtx[ind, j, i] += min_rad_num
-            
+
+        # ラジカルが許されなければ
+        if not self.b_exist_rad:
+            no_rad_bool=[False]*cand_num
+            for ind in range(cand_num):
+                    for i in range(self.atm_num):
+                        #隣接行列の対角成分が0以上なら
+                        if n_bond_mtx[ind, i, i] > 0:
+                            break
+                    else:
+                        no_rad_bool[ind] = True
+            n_bond_mtx=n_bond_mtx[no_rad_bool,:,:]
+            cand_num=round(np.sum(no_rad_bool))
+
         # 原子価4の原子の数
         vlc_mt_4=self.atm_num
         for i,vlc_num in enumerate(self.vlc_list):
