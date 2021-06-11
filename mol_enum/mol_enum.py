@@ -402,3 +402,58 @@ class SpanMolEnum:
                     break
         finally:
             GraphSet.converters["to_graph"] = save_to_graph
+
+def enumerate_under(
+        c_num=2,
+        h_num=6,
+        f_num=6,
+        cl_num=4,
+        b_exist_rad=False,
+        enum_limt=3000):
+    """
+    この原子数以下で分子を発生
+    """
+
+    atm_strs=["C","H","F","Cl"]
+
+    c_cand=tuple(range(c_num+1))
+    h_cand=tuple(range(h_num+1))
+    f_cand=tuple(range(f_num+1))
+    cl_cand=tuple(range(cl_num+1))
+    comb_list=[c_cand,h_cand,f_cand,cl_cand]
+
+    comb_num=(c_num+1)*(h_num+1)*(f_num+1)*(cl_num+1)
+
+    comb_no=0
+    comb_iter=itertools.product(*comb_list)
+    span_mol_dict=dict()
+    for comb in comb_iter:
+        if comb_no==enum_limt:
+            break
+        comb_no+=1
+
+        str_atm_list=[]
+        for i,repeat in enumerate(comb):
+            str_atm_list.extend(
+                [atm_strs[i]]*repeat)
+        formula=""
+        for i in range(4):
+            formula += str(atm_strs[i])+str(comb[i])
+
+        span_mol_enum=SpanMolEnum(b_exist_rad=b_exist_rad)
+        span_mol_enum.set_atm_list(str_atm_list=str_atm_list)
+        span_mol_enum.generate_mol()
+        span_mol_dict[comb]=span_mol_enum.smi_set
+        verbose_test="{:0=5} {} : {}".format(
+            comb_no,
+            formula,
+            len(span_mol_enum.smi_set))
+
+    smi_set=set()
+    for smis in span_mol_dict.values():
+        smi_set |= smis
+
+    smiles_list=[]
+    for smi in smi_set:
+        smiles_list.append(smi)
+    return smiles_list
