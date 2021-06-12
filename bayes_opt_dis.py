@@ -7,6 +7,7 @@ class BayesianOptDiscrete:
         self.t_2=0.4
         self.t_3=0.1
         self.lam=lam
+        self.initialized=False
         
         self.func=func
         self.features=features# 特徴量ベクトル:x
@@ -18,7 +19,8 @@ class BayesianOptDiscrete:
         self.remain_target_no_list=self.target_no_list.copy()
         
     def minimumize_func(self,niter=10):
-        self.initial_estimate()
+        if not self.initialized:
+            raise ValueError("not initialized")
         for i in range(niter):
             self.calculate_kernel()
             self.calculate_e_v()
@@ -59,6 +61,29 @@ class BayesianOptDiscrete:
         self.mean_train_y=np.mean(self.train_y)
         self.std_train_y=np.std(self.train_y,ddof=1)
         self.stdrized_train_y=(self.train_y-self.mean_train_y)/self.std_train_y
+
+        self.initialized=True
+
+    def set_initial_estimate(self,train_target_no_list,train_y_list):
+        self.train_target_no_list=train_target_no_list
+        self.train_y_list=train_y_list
+        self.train_y=np.array(train_y_list)
+
+        initial_num=len(self.train_target_no_list)
+
+        # 選んだ点をyを計算していないtargetのnoのリストから削除
+        for i in range(initial_num):
+            self.remain_target_no_list.remove(self.train_target_no_list[i])
+
+        # 特徴量ベクトルを格納
+        self.train_x=self.features[self.train_target_no_list,:]
+
+        # 標準化
+        self.mean_train_y=np.mean(self.train_y)
+        self.std_train_y=np.std(self.train_y,ddof=1)
+        self.stdrized_train_y=(self.train_y-self.mean_train_y)/self.std_train_y
+
+        self.initialized=True
         
     def calculate_kernel(self):
 
@@ -80,7 +105,7 @@ class BayesianOptDiscrete:
         期待値と分散の計算
         """
         # yを計算していないtargetのnoのリストの特徴量ベクトルを取得
-        remain_x=features[self.remain_target_no_list,:]
+        remain_x=self.features[self.remain_target_no_list,:]
         remain_num=len(remain_x)
         self.expected_y=np.zeros(remain_num)
         self.variance_y=np.zeros(remain_num)
@@ -123,7 +148,7 @@ class BayesianOptDiscrete:
         self.std_train_y=np.std(self.train_y,ddof=1)
         self.stdrized_train_y=(self.train_y-self.mean_train_y)/self.std_train_y
         
-    def plot_result(self):
+    def plot_result(self,calc_remain=False):
         # 訓練データ数
         train_num=len(self.train_target_no_list)
         train_no_arange=np.arange(train_num)
@@ -142,11 +167,21 @@ class BayesianOptDiscrete:
         # 獲得関数の大きい順(降順)に並び替える
         descending=np.argsort(alpha)[::-1]
 
+        if calc_remain:
+            remain_true_values=np.zeros(remain_num)
+            for i in range(remain_num):
+                remain_true_values[i]=self.func(
+                    self.remain_target_no_list[i]
+                )
+
         plt.figure(figsize=(10,5))
-        plt.plot(train_no_arange,self.train_y,label="True Value")
-        plt.plot(remain_no_arange,scaled_expected_y[descending],label="Expect")
-        plt.plot(remain_no_arange,scaled_variance_y[descending],label="Variance")
-        plt.plot(remain_no_arange,alpha[descending],label="$\\alpha_{lcb}$")
+        plt.plot(train_no_arange,self.train_y,label="True Values (Evaluated)",color="C0")
+        if calc_remain:
+            plt.plot(remain_no_arange,remain_true_values[descending],label="True Values (Not Evaluated)",linestyle="--",color="C0")
+
+        plt.plot(remain_no_arange,scaled_expected_y[descending],label="Expect",color="C1")
+        plt.plot(remain_no_arange,scaled_variance_y[descending],label="Variance",color="C2")
+        plt.plot(remain_no_arange,alpha[descending],label="$\\alpha_{lcb}$",color="C3")
         plt.ylabel("y")
         plt.legend()
         plt.show()
